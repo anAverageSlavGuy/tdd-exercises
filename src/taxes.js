@@ -10,26 +10,27 @@ export function emptyShoppingCart() {
 
 export function addProductToCart(product) {
     product.totalPrice = product.quantity * product.price;
-    product.salesTaxes = 0;
-    product.salesTaxes = calculateBasicSalesTax(product);
-    product.salesTaxes = calculateImportDutyTax(product);
-    product.totalPriceTaxed = product.salesTaxes + product.totalPrice;
+    const { totalSalesTax, totalPriceTaxed } = calculateSalesTax(product);
+    product = { ...product, totalSalesTax, totalPriceTaxed };
     productsList.push(product);
 }
 
-export function calculateBasicSalesTax(prod) {
-    const tax = isExcludedFromBasicTax(prod.type) ? prod.salesTaxes : Number(prod.salesTaxes + (0.10 * prod.totalPrice));
-    return tax;
-}
+export function calculateSalesTax(prod) {
 
-export function calculateImportDutyTax(prod) {
-    const tax = isExcludedFromImportDutyTax(prod.imported) ? prod.salesTaxes : Number(prod.salesTaxes + (0.05 * prod.totalPrice));
-    return tax;
+    let taxPercentage = isExcludedFromBasicTax(prod.type) ? 0 : 10;
+    taxPercentage = isExcludedFromImportDutyTax(prod.imported) ? taxPercentage : taxPercentage + 5;
+    
+    const salesTaxesNotRounder = Number((prod.price) * taxPercentage / 100);
+    const salesTaxes = Number((Math.ceil(salesTaxesNotRounder * 20) / 20).toFixed(2));
+    const result = prod.price + salesTaxes;
+    const totalPriceTaxed = Number((prod.quantity * result).toFixed(2));
+    const totalSalesTax = Number((prod.quantity * salesTaxes).toFixed(2));
+    return { totalSalesTax, totalPriceTaxed };
 }
 
 export function sumSalesTax(products) {
     const total = products.reduce(function (sum, product) {
-        return sum + product.salesTaxes;
+        return sum + product.totalSalesTax;
     }, 0);
 
     return Number(total.toFixed(2));
@@ -45,18 +46,18 @@ export function sumPrice(products) {
 
 export function printReceipt() {
     const totalPrice = productsList.reduce(function (sum, product) {
-        return sum + (product.totalPrice + product.salesTaxes);
+        return sum + (product.totalPrice + product.totalSalesTax);
     }, 0);
 
     const totalTax = productsList.reduce(function (sum, product) {
-        return sum + product.salesTaxes;
+        return sum + product.totalSalesTax;
     }, 0);
 
     let output = ``;
 
     for (const p in productsList) {
         let product = productsList[p];
-        output += `${product.quantity} ${product.name}: ${(product.totalPrice + product.salesTaxes).toFixed(2)}\n`
+        output += `${product.quantity} ${product.name}: ${(product.totalPrice + product.totalSalesTax).toFixed(2)}\n`
     }
 
     output += `Sales Taxes: ${totalTax.toFixed(2)}\n`;
